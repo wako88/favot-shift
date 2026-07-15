@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -11,19 +11,30 @@
 
 <body>
 
-    <header>
+    <header class="header">
 
-        <h1>Favot Shift</h1>
+        <div class="title">
+            Favot Shift
+        </div>
 
         <div class="toolbar">
 
-            <input type="month" id="monthSelect">
+            <input
+                type="month"
+                id="monthSelect"
+            >
 
-            <button id="createBtn">シフト作成</button>
+            <button id="createBtn">
+                シフト作成
+            </button>
 
-            <button id="staffBtn">スタッフ管理</button>
+            <button id="staffBtn">
+                スタッフ管理
+            </button>
 
-            <button id="printBtn">印刷</button>
+            <button id="printBtn">
+                印刷
+            </button>
 
         </div>
 
@@ -31,14 +42,16 @@
 
     <main>
 
-        <section class="tableArea">
+        <section class="tableWrapper">
 
             <table id="shiftTable">
 
                 <thead id="shiftHead">
+
                 </thead>
 
                 <tbody id="shiftBody">
+
                 </tbody>
 
             </table>
@@ -51,12 +64,16 @@
 
     <dialog id="staffDialog">
 
-        <h2>スタッフ管理</h2>
+        <div class="dialogHeader">
 
-        <div id="staffList">
+            <h2>スタッフ管理</h2>
+
         </div>
 
-        <div class="dialogButtons">
+        <div id="staffList">
+
+        </div>
+                <div class="dialogButtons">
 
             <button id="addStaffBtn">
                 ＋ スタッフ追加
