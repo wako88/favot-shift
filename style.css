@@ -1,0 +1,287 @@
+/* ===========================
+   Favot Shift Ver1.0
+   style.css
+=========================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+:root{
+
+    --primary:#1976d2;
+    --primary-hover:#1565c0;
+
+    --background:#f5f7fa;
+    --surface:#ffffff;
+
+    --border:#d9dee5;
+
+    --text:#333333;
+
+    --sat:#fff7c7;
+    --sun:#ffe2e2;
+
+}
+
+body{
+
+    font-family:"Yu Gothic UI",sans-serif;
+    background:var(--background);
+    color:var(--text);
+
+}
+
+.header{
+
+    height:70px;
+
+    background:var(--primary);
+
+    color:#fff;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:0 20px;
+
+}
+
+.title{
+
+    font-size:28px;
+
+    font-weight:bold;
+
+}
+
+.toolbar{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+}
+
+.toolbar input{
+
+    width:170px;
+
+    height:40px;
+
+    padding:0 10px;
+
+    border:none;
+
+    border-radius:8px;
+
+    font-size:15px;
+
+}
+
+.toolbar button{
+
+    height:40px;
+
+    padding:0 18px;
+
+    border:none;
+
+    border-radius:8px;
+
+    background:#fff;
+
+    color:var(--primary);
+
+    font-size:14px;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    transition:.2s;
+
+}
+
+.toolbar button:hover{
+
+    background:#eef5ff;
+
+}
+
+main{
+
+    padding:20px;
+
+}
+
+.tableWrapper{
+
+    background:var(--surface);
+
+    border:1px solid var(--border);
+
+    border-radius:10px;
+
+    overflow:auto;
+
+    box-shadow:0 3px 10px rgba(0,0,0,.08);
+
+}
+table{
+
+    border-collapse:collapse;
+
+    width:max-content;
+
+}
+
+th,
+td{
+
+    border:1px solid var(--border);
+
+    width:50px;
+
+    min-width:50px;
+
+    height:42px;
+
+    text-align:center;
+
+    font-size:14px;
+
+}
+
+thead th{
+
+    background:#f8f9fb;
+
+    position:sticky;
+
+    top:0;
+
+    z-index:10;
+
+}
+
+thead small{
+
+    display:block;
+
+    margin-top:2px;
+
+    font-size:11px;
+
+    font-weight:normal;
+
+}
+
+.sat{
+
+    background:var(--sat)!important;
+
+}
+
+.sun{
+
+    background:var(--sun)!important;
+
+}
+
+tbody td{
+
+    cursor:pointer;
+
+    user-select:none;
+
+    transition:.15s;
+
+}
+
+tbody td:hover{
+
+    background:#eef5ff;
+
+}
+
+dialog{
+
+    width:520px;
+
+    border:none;
+
+    border-radius:10px;
+
+    padding:20px;
+
+    box-shadow:0 15px 35px rgba(0,0,0,.25);
+
+}
+
+dialog::backdrop{
+
+    background:rgba(0,0,0,.35);
+
+}
+
+.dialogHeader{
+
+    margin-bottom:20px;
+
+}
+
+#staffList{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:10px;
+
+}
+
+.dialogButtons{
+
+    display:flex;
+
+    justify-content:flex-end;
+
+    gap:10px;
+
+    margin-top:20px;
+
+}
+
+.dialogButtons button{
+
+    height:40px;
+
+    padding:0 18px;
+
+    border:none;
+
+    border-radius:8px;
+
+    background:var(--primary);
+
+    color:#fff;
+
+    cursor:pointer;
+
+    font-size:14px;
+
+}
+
+.dialogButtons button:hover{
+
+    background:var(--primary-hover);
+
+}
