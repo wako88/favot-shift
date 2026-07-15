@@ -1,61 +1,39 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ja">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Favot Shift Ver1.0</title>
+    <title>Favot Shift</title>
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<header>
+    <header>
 
-    <div class="logo">
-        🍃 Favot Shift
-    </div>
+        <h1>Favot Shift</h1>
 
-    <div class="toolbar">
-        <input type="month" id="monthSelect">
+        <div class="toolbar">
 
-        <button id="createBtn">
-            シフト作成
-        </button>
+            <input type="month" id="monthSelect">
 
-        <button id="staffBtn">
-            スタッフ管理
-        </button>
+            <button id="createBtn">シフト作成</button>
 
-        <button id="printBtn">
-            印刷
-        </button>
-    </div>
+            <button id="staffBtn">スタッフ管理</button>
 
-</header>
+            <button id="printBtn">印刷</button>
 
-<main>
-
-    <section class="tableArea">
-
-        <div class="leftTable">
-            <table>
-
-                <thead>
-                    <tr>
-                        <th>スタッフ</th>
-                    </tr>
-                </thead>
-
-                <tbody id="staffBody">
-                </tbody>
-
-            </table>
         </div>
 
-        <div class="rightTable">
-            <table>
+    </header>
+
+    <main>
+
+        <section class="tableArea">
+
+            <table id="shiftTable">
 
                 <thead id="shiftHead">
                 </thead>
@@ -64,39 +42,39 @@
                 </tbody>
 
             </table>
+
+        </section>
+
+    </main>
+
+    <!-- スタッフ管理 -->
+
+    <dialog id="staffDialog">
+
+        <h2>スタッフ管理</h2>
+
+        <div id="staffList">
         </div>
 
-    </section>
+        <div class="dialogButtons">
 
-</main>
+            <button id="addStaffBtn">
+                ＋ スタッフ追加
+            </button>
 
-<!-- スタッフ管理ダイアログ -->
-<dialog id="staffDialog">
+            <button id="closeStaffBtn">
+                閉じる
+            </button>
 
-    <h2>スタッフ管理</h2>
+        </div>
 
-    <div id="staffList">
-    </div>
+    </dialog>
 
-    <div class="dialogButtons">
-
-        <button id="addStaffBtn">
-            ＋ スタッフ追加
-        </button>
-
-        <button id="closeStaffBtn">
-            閉じる
-        </button>
-
-    </div>
-
-</dialog>
-
-<script src="table.js"></script>
-<script src="staff.js"></script>
-<script src="storage.js"></script>
-<script src="print.js"></script>
-<script src="app.js"></script>
+    <script src="table.js"></script>
+    <script src="staff.js"></script>
+    <script src="storage.js"></script>
+    <script src="print.js"></script>
+    <script src="app.js"></script>
 
 </body>
 
