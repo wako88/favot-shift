@@ -233,6 +233,8 @@ tbody td:hover{
 
     font-weight:bold;
 
+    border-right:2px solid var(--border);
+
 }
 
 #shiftHead th:first-child{
