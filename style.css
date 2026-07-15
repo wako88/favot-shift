@@ -12,14 +12,12 @@
 :root{
 
     --primary:#1976d2;
-    --primary-hover:#1565c0;
+    --primaryHover:#1565c0;
 
-    --background:#f5f7fa;
-    --surface:#ffffff;
-
+    --bg:#f5f7fa;
+    --white:#ffffff;
     --border:#d9dee5;
-
-    --text:#333333;
+    --text:#333;
 
     --sat:#fff7c7;
     --sun:#ffe2e2;
@@ -29,7 +27,7 @@
 body{
 
     font-family:"Yu Gothic UI",sans-serif;
-    background:var(--background);
+    background:var(--bg);
     color:var(--text);
 
 }
@@ -54,7 +52,7 @@ body{
 
 .title{
 
-    font-size:28px;
+    font-size:30px;
 
     font-weight:bold;
 
@@ -100,8 +98,6 @@ body{
 
     color:var(--primary);
 
-    font-size:14px;
-
     font-weight:bold;
 
     cursor:pointer;
@@ -124,7 +120,7 @@ main{
 
 .tableWrapper{
 
-    background:var(--surface);
+    background:#fff;
 
     border:1px solid var(--border);
 
@@ -132,9 +128,12 @@ main{
 
     overflow:auto;
 
+    max-height:75vh;
+
     box-shadow:0 3px 10px rgba(0,0,0,.08);
 
 }
+
 table{
 
     border-collapse:collapse;
@@ -168,7 +167,7 @@ thead th{
 
     top:0;
 
-    z-index:10;
+    z-index:20;
 
 }
 
@@ -176,11 +175,9 @@ thead small{
 
     display:block;
 
-    margin-top:2px;
-
     font-size:11px;
 
-    font-weight:normal;
+    margin-top:2px;
 
 }
 
@@ -195,7 +192,6 @@ thead small{
     background:var(--sun)!important;
 
 }
-
 tbody td{
 
     cursor:pointer;
@@ -211,6 +207,76 @@ tbody td:hover{
     background:#eef5ff;
 
 }
+
+/* ===========================
+   固定列
+=========================== */
+
+#shiftHead th:first-child,
+#shiftBody th{
+
+    position:sticky;
+
+    left:0;
+
+    width:220px;
+
+    min-width:220px;
+
+    background:#fff;
+
+    z-index:15;
+
+    text-align:left;
+
+    padding-left:16px;
+
+    font-weight:bold;
+
+}
+
+#shiftHead th:first-child{
+
+    z-index:30;
+
+    background:#f8f9fb;
+
+}
+
+/* ===========================
+   勤務回数列
+=========================== */
+
+#shiftHead th:last-child,
+#shiftBody .countCell{
+
+    position:sticky;
+
+    right:0;
+
+    width:70px;
+
+    min-width:70px;
+
+    background:#fff;
+
+    z-index:15;
+
+    font-weight:bold;
+
+}
+
+#shiftHead th:last-child{
+
+    z-index:30;
+
+    background:#f8f9fb;
+
+}
+
+/* ===========================
+   スタッフ管理
+=========================== */
 
 dialog{
 
@@ -248,6 +314,28 @@ dialog::backdrop{
 
 }
 
+.staffRow{
+
+    display:grid;
+
+    grid-template-columns:40px 1fr;
+
+    gap:10px;
+
+    align-items:center;
+
+}
+
+.staffRow input[type="text"]{
+
+    height:38px;
+
+    padding:0 10px;
+
+    font-size:14px;
+
+}
+
 .dialogButtons{
 
     display:flex;
@@ -282,6 +370,6 @@ dialog::backdrop{
 
 .dialogButtons button:hover{
 
-    background:var(--primary-hover);
+    background:var(--primaryHover);
 
 }
