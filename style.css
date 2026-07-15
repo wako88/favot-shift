@@ -316,15 +316,28 @@ dialog::backdrop{
 
 }
 
+.staffHeader,
 .staffRow{
 
     display:grid;
 
-    grid-template-columns:40px 1fr;
+    grid-template-columns:60px 60px 1fr;
 
     gap:10px;
 
     align-items:center;
+
+}
+
+.staffHeader{
+
+    font-weight:bold;
+
+    padding-bottom:8px;
+
+    border-bottom:1px solid var(--border);
+
+    margin-bottom:10px;
 
 }
 

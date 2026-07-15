@@ -40,28 +40,54 @@ function renderStaffList() {
 
     });
 
-    let html = "";
+    let html = `
 
-    staffList.forEach(staff => {
+        <div class="staffHeader">
+
+            <div>自動</div>
+
+            <div>有効</div>
+
+            <div>スタッフ名</div>
+
+        </div>
+
+    `;
+        staffList.forEach(staff => {
+
+        if (staff.autoAssign === undefined) {
+
+            staff.autoAssign = true;
+
+        }
 
         html += `
-            <div class="staffRow">
 
-                <input
-                    type="checkbox"
-                    class="staffEnabled"
-                    data-id="${staff.id}"
-                    ${staff.enabled ? "checked" : ""}
-                >
+        <div class="staffRow">
 
-                <input
-                    type="text"
-                    class="staffName"
-                    data-id="${staff.id}"
-                    value="${staff.name}"
-                >
+            <input
+                type="checkbox"
+                class="staffAuto"
+                data-id="${staff.id}"
+                ${staff.autoAssign ? "checked" : ""}
+            >
 
-            </div>
+            <input
+                type="checkbox"
+                class="staffEnabled"
+                data-id="${staff.id}"
+                ${staff.enabled ? "checked" : ""}
+            >
+
+            <input
+                type="text"
+                class="staffName"
+                data-id="${staff.id}"
+                value="${staff.name}"
+            >
+
+        </div>
+
         `;
 
     });
@@ -71,6 +97,7 @@ function renderStaffList() {
     attachStaffEvents();
 
 }
+
 function attachStaffEvents() {
 
     document.querySelectorAll(".staffName").forEach(input => {
@@ -94,8 +121,7 @@ function attachStaffEvents() {
         });
 
     });
-
-    document.querySelectorAll(".staffEnabled").forEach(check => {
+        document.querySelectorAll(".staffEnabled").forEach(check => {
 
         check.addEventListener("change", e => {
 
@@ -117,6 +143,26 @@ function attachStaffEvents() {
 
     });
 
+    document.querySelectorAll(".staffAuto").forEach(check => {
+
+        check.addEventListener("change", e => {
+
+            const id = Number(e.target.dataset.id);
+
+            const staff = staffList.find(s => s.id === id);
+
+            if (!staff) return;
+
+            staff.autoAssign = e.target.checked;
+
+            saveData();
+
+            renderStaffList();
+
+        });
+
+    });
+
 }
 
 function addStaff() {
@@ -131,7 +177,9 @@ function addStaff() {
 
         name: `スタッフ${nextId}`,
 
-        enabled: true
+        enabled: true,
+
+        autoAssign: true
 
     });
 

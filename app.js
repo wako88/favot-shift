@@ -7,22 +7,32 @@ let staffList = [
     {
         id: 1,
         name: "A",
-        enabled: true
+        enabled: true,
+        autoAssign: true
     },
     {
         id: 2,
         name: "B",
-        enabled: true
+        enabled: true,
+        autoAssign: true
     },
     {
         id: 3,
         name: "C",
-        enabled: true
+        enabled: true,
+        autoAssign: true
     },
     {
         id: 4,
         name: "D",
-        enabled: true
+        enabled: true,
+        autoAssign: true
+    },
+    {
+        id: 5,
+        name: "副社長",
+        enabled: true,
+        autoAssign: false
     }
 ];
 
