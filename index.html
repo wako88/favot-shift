@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favot Shift Ver1.0</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+
+    <div class="logo">
+        🍃 Favot Shift
+    </div>
+
+    <div class="toolbar">
+        <input type="month" id="monthSelect">
+
+        <button id="createBtn">
+            シフト作成
+        </button>
+
+        <button id="staffBtn">
+            スタッフ管理
+        </button>
+
+        <button id="printBtn">
+            印刷
+        </button>
+    </div>
+
+</header>
+
+<main>
+
+    <section class="tableArea">
+
+        <div class="leftTable">
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>スタッフ</th>
+                    </tr>
+                </thead>
+
+                <tbody id="staffBody">
+                </tbody>
+
+            </table>
+        </div>
+
+        <div class="rightTable">
+            <table>
+
+                <thead id="shiftHead">
+                </thead>
+
+                <tbody id="shiftBody">
+                </tbody>
+
+            </table>
+        </div>
+
+    </section>
+
+</main>
+
+<!-- スタッフ管理ダイアログ -->
+<dialog id="staffDialog">
+
+    <h2>スタッフ管理</h2>
+
+    <div id="staffList">
+    </div>
+
+    <div class="dialogButtons">
+
+        <button id="addStaffBtn">
+            ＋ スタッフ追加
+        </button>
+
+        <button id="closeStaffBtn">
+            閉じる
+        </button>
+
+    </div>
+
+</dialog>
+
+<script src="table.js"></script>
+<script src="staff.js"></script>
+<script src="storage.js"></script>
+<script src="print.js"></script>
+<script src="app.js"></script>
+
+</body>
+
+</html>
