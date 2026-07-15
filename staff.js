@@ -6,29 +6,29 @@
 const staffDialog = document.getElementById("staffDialog");
 const staffListArea = document.getElementById("staffList");
 
-document.getElementById("staffBtn").addEventListener("click", openStaffDialog);
+const staffBtn = document.getElementById("staffBtn");
+const closeStaffBtn = document.getElementById("closeStaffBtn");
+const addStaffBtn = document.getElementById("addStaffBtn");
 
-document.getElementById("closeStaffBtn").addEventListener("click", () => {
-
-    staffDialog.close();
-
-});
-
-document.getElementById("addStaffBtn").addEventListener("click", addStaff);
-
-function openStaffDialog() {
+staffBtn.addEventListener("click", () => {
 
     renderStaffList();
 
     staffDialog.showModal();
 
-}
+});
+
+closeStaffBtn.addEventListener("click", () => {
+
+    staffDialog.close();
+
+});
+
+addStaffBtn.addEventListener("click", addStaff);
 
 function renderStaffList() {
 
-    const list = [...staffList];
-
-    list.sort((a, b) => {
+    staffList.sort((a, b) => {
 
         if (a.enabled === b.enabled) {
 
@@ -42,7 +42,7 @@ function renderStaffList() {
 
     let html = "";
 
-    list.forEach(staff => {
+    staffList.forEach(staff => {
 
         html += `
             <div class="staffRow">
@@ -121,10 +121,9 @@ function attachStaffEvents() {
 
 function addStaff() {
 
-    const nextId =
-        staffList.length === 0
-            ? 1
-            : Math.max(...staffList.map(s => s.id)) + 1;
+    const nextId = staffList.length === 0
+        ? 1
+        : Math.max(...staffList.map(s => s.id)) + 1;
 
     staffList.push({
 
