@@ -44,6 +44,8 @@ monthSelect.addEventListener("change", () => {
 
 });
 
-loadData();
+if (!loadData()) {
 
-buildTable();
+    buildTable();
+
+}

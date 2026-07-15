@@ -31,10 +31,7 @@ function saveData() {
 
     });
 
-    localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(data)
-    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
 }
 
@@ -42,7 +39,11 @@ function loadData() {
 
     const json = localStorage.getItem(STORAGE_KEY);
 
-    if (!json) return;
+    if (!json) {
+
+        return false;
+
+    }
 
     const data = JSON.parse(json);
 
@@ -59,18 +60,20 @@ function loadData() {
     }
 
     buildTable();
-        const shiftData = data.shifts || [];
 
-    document.querySelectorAll("#shiftBody tr").forEach((row, rowIndex) => {
+    const rows = document.querySelectorAll("#shiftBody tr");
 
-        const rowData = shiftData[rowIndex] || [];
+    rows.forEach((row, rowIndex) => {
 
-        row.querySelectorAll("td[data-shift]").forEach((cell, colIndex) => {
+        if (!data.shifts[rowIndex]) return;
 
-            const shift = rowData[colIndex] || "";
+        const cells = row.querySelectorAll("td[data-shift]");
+
+        cells.forEach((cell, colIndex) => {
+
+            const shift = data.shifts[rowIndex][colIndex] || "";
 
             cell.dataset.shift = shift;
-
             cell.textContent = shift;
 
         });
@@ -78,5 +81,7 @@ function loadData() {
     });
 
     updateCount();
+
+    return true;
 
 }
