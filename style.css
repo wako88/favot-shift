@@ -219,13 +219,13 @@ tbody td:hover{
 
     left:0;
 
-    width:220px;
+    width:120px;
 
-    min-width:220px;
+    min-width:120px;
 
     background:#fff;
 
-    z-index:15;
+    z-index:40;
 
     text-align:left;
 
@@ -233,7 +233,8 @@ tbody td:hover{
 
     font-weight:bold;
 
-    border-right:2px solid var(--border);
+    box-shadow:2px 0 0 var(--border);
+
 
 }
 
@@ -246,33 +247,63 @@ tbody td:hover{
 }
 
 /* ===========================
-   勤務回数列
+   集計列
 =========================== */
 
-#shiftHead th:last-child,
-#shiftBody .countCell{
+#shiftHead th:nth-last-child(4),
+#shiftBody td.earlyCount{
 
     position:sticky;
-
-    right:0;
-
-    width:70px;
-
-    min-width:70px;
-
+    right:135px;
+    width:45px;
+    min-width:45px;
     background:#fff;
-
-    z-index:15;
-
-    font-weight:bold;
+    z-index:40;
+    box-shadow:-2px 0 0 var(--border);
 
 }
 
-#shiftHead th:last-child{
+#shiftHead th:nth-last-child(3),
+#shiftBody td.lateCount{
+
+    position:sticky;
+    right:90px;
+    width:45px;
+    min-width:45px;
+    background:#fff;
+    z-index:40;
+
+}
+
+#shiftHead th:nth-last-child(2),
+#shiftBody td.nightCount{
+
+    position:sticky;
+    right:45px;
+    width:45px;
+    min-width:45px;
+    background:#fff;
+    z-index:40;
+
+}
+
+#shiftHead th:nth-last-child(1),
+#shiftBody td.restCount{
+
+    position:sticky;
+    right:0;
+    width:45px;
+    min-width:45px;
+    background:#fff;
+    z-index:40;
+
+}
+
+#shiftHead th:nth-last-child(-n+4){
 
     z-index:30;
-
     background:#f8f9fb;
+    font-weight:bold;
 
 }
 

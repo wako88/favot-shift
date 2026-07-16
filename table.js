@@ -57,13 +57,14 @@ function createHeader(year, month, days) {
 
     }
 
-    html += `
-            <th>回数</th>
-        </tr>
-    `;
-
-    shiftHead.innerHTML = html;
-
+   html += `
+        <th>早</th>
+        <th>遅</th>
+        <th>夜</th>
+        <th>休</th>
+    </tr>
+`;
+shiftHead.innerHTML = html;
 }
 
 function createBody(days) {
@@ -88,7 +89,10 @@ function createBody(days) {
         }
 
         html += `
-                <td class="countCell">0</td>
+                <td class="earlyCount">0</td>
+<td class="lateCount">0</td>
+<td class="nightCount">0</td>
+<td class="restCount">0</td>
             </tr>
         `;
 
@@ -137,23 +141,42 @@ function updateCount() {
 
     document.querySelectorAll("#shiftBody tr").forEach(row => {
 
-        let count = 0;
+        let early = 0;
+        let late = 0;
+        let night = 0;
+        let rest = 0;
 
         row.querySelectorAll("td[data-shift]").forEach(cell => {
 
-            const shift = cell.dataset.shift;
+            switch (cell.dataset.shift) {
 
-            if (
-                shift !== "" &&
-                shift !== "休" &&
-                shift !== "有"
-            ) {
-                count++;
+                case "早①":
+                case "早②":
+                    early++;
+                    break;
+
+                case "遅":
+                    late++;
+                    break;
+
+                case "夜①":
+                case "夜②":
+                    night++;
+                    break;
+
+                case "休":
+                case "有":
+                    rest++;
+                    break;
+
             }
 
         });
 
-        row.querySelector(".countCell").textContent = count;
+        row.querySelector(".earlyCount").textContent = early;
+        row.querySelector(".lateCount").textContent = late;
+        row.querySelector(".nightCount").textContent = night;
+        row.querySelector(".restCount").textContent = rest;
 
     });
 
