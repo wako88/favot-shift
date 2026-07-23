@@ -14,6 +14,13 @@ const SHIFT_MASTER = [
     "有"
 ];
 
+const COUNT_COLUMNS = [
+    { key: "early", label: "早", className: "earlyCount" },
+    { key: "late", label: "遅", className: "lateCount" },
+    { key: "night", label: "夜", className: "nightCount" },
+    { key: "rest", label: "休", className: "restCount" }
+];
+
 function buildTable() {
 
     const [year, month] = monthSelect.value.split("-");
@@ -34,7 +41,7 @@ function createHeader(year, month, days) {
 
     let html = `
         <tr>
-            <th>スタッフ</th>
+            <th class="staffHeaderCell stickyLeft">スタッフ</th>
     `;
 
     for (let day = 1; day <= days; day++) {
@@ -49,7 +56,7 @@ function createHeader(year, month, days) {
         if (date.getDay() === 0) cls = "sun";
 
         html += `
-            <th class="${cls}">
+            <th class="dateHeaderCell ${cls}">
                 ${day}
                 <small>${week}</small>
             </th>
@@ -57,14 +64,21 @@ function createHeader(year, month, days) {
 
     }
 
-   html += `
-        <th>早</th>
-        <th>遅</th>
-        <th>夜</th>
-        <th>休</th>
-    </tr>
-`;
-shiftHead.innerHTML = html;
+    COUNT_COLUMNS.forEach(column => {
+
+        html += `
+            <th class="countHeaderCell ${column.className}">
+                ${column.label}
+            </th>
+        `;
+
+    });
+
+    html += `
+        </tr>
+    `;
+
+    shiftHead.innerHTML = html;
 }
 
 function createBody(days) {
@@ -77,22 +91,26 @@ function createBody(days) {
 
         html += `
             <tr data-id="${staff.id}">
-                <th>${staff.name}</th>
+                <th class="staffCell stickyLeft">${staff.name}</th>
         `;
 
         for (let day = 1; day <= days; day++) {
 
             html += `
-                <td data-shift=""></td>
+                <td class="shiftCell" data-shift=""></td>
             `;
 
         }
 
+        COUNT_COLUMNS.forEach(column => {
+
+            html += `
+                <td class="countCell ${column.className}">0</td>
+            `;
+
+        });
+
         html += `
-                <td class="earlyCount">0</td>
-<td class="lateCount">0</td>
-<td class="nightCount">0</td>
-<td class="restCount">0</td>
             </tr>
         `;
 

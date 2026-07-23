@@ -136,7 +136,9 @@ main{
 
 table{
 
-    border-collapse:collapse;
+    border-collapse:separate;
+
+    border-spacing:0;
 
     width:max-content;
 
@@ -145,7 +147,9 @@ table{
 th,
 td{
 
-    border:1px solid var(--border);
+    border-right:1px solid var(--border);
+
+    border-bottom:1px solid var(--border);
 
     width:50px;
 
@@ -212,8 +216,7 @@ tbody td:hover{
    固定列
 =========================== */
 
-#shiftHead th:first-child,
-#shiftBody th{
+.stickyLeft{
 
     position:sticky;
 
@@ -233,14 +236,13 @@ tbody td:hover{
 
     font-weight:bold;
 
-    box-shadow:2px 0 0 var(--border);
-
+    border-right:2px solid var(--border);
 
 }
 
-#shiftHead th:first-child{
+.staffHeaderCell{
 
-    z-index:30;
+    z-index:90;
 
     background:#f8f9fb;
 
@@ -250,60 +252,48 @@ tbody td:hover{
    集計列
 =========================== */
 
-#shiftHead th:nth-last-child(4),
-#shiftBody td.earlyCount{
+.countHeaderCell,
+.countCell{
 
     position:sticky;
-    right:135px;
     width:45px;
     min-width:45px;
     background:#fff;
-    z-index:40;
-    box-shadow:-2px 0 0 var(--border);
-
-}
-
-#shiftHead th:nth-last-child(3),
-#shiftBody td.lateCount{
-
-    position:sticky;
-    right:90px;
-    width:45px;
-    min-width:45px;
-    background:#fff;
-    z-index:40;
-
-}
-
-#shiftHead th:nth-last-child(2),
-#shiftBody td.nightCount{
-
-    position:sticky;
-    right:45px;
-    width:45px;
-    min-width:45px;
-    background:#fff;
-    z-index:40;
-
-}
-
-#shiftHead th:nth-last-child(1),
-#shiftBody td.restCount{
-
-    position:sticky;
-    right:0;
-    width:45px;
-    min-width:45px;
-    background:#fff;
-    z-index:40;
-
-}
-
-#shiftHead th:nth-last-child(-n+4){
-
-    z-index:30;
-    background:#f8f9fb;
+    border-left:1px solid var(--border);
+    z-index:60;
     font-weight:bold;
+    cursor:default;
+
+}
+
+.countHeaderCell{
+
+    z-index:100;
+    background:#f8f9fb;
+
+}
+
+.earlyCount{
+
+    right:135px;
+
+}
+
+.lateCount{
+
+    right:90px;
+
+}
+
+.nightCount{
+
+    right:45px;
+
+}
+
+.restCount{
+
+    right:0;
 
 }
 
