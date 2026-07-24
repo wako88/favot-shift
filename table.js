@@ -36,6 +36,7 @@ const AUTO_SHIFT_CONFIG = {
     maxConsecutiveWorkDays: 5,
     targetConsecutiveRest: 2,
     largeImbalanceThreshold: 3,
+    nightBeforeWeekendLowCountWeight: 18,
     searchAttempts: 12
 };
 
@@ -2350,6 +2351,7 @@ function getProjectedLateStandardPenalty(state, shift) {
 function scoreSetCandidate(context, state, day, shift) {
 
     let score = scoreCandidate(context, state, day, shift);
+    score += getNightSetWeekendBalancePenalty(context, state, day, shift);
 
     const workValues = context.staffStates.map(candidate => {
         return countWorkDays(candidate) + (candidate === state && isWorkShift(shift) ? 1 : 0);
@@ -2360,6 +2362,24 @@ function scoreSetCandidate(context, state, day, shift) {
     if (workRange >= 3) score += 80;
 
     return score;
+
+}
+
+function getNightSetWeekendBalancePenalty(context, state, day, shift) {
+
+    if (!isNightShift(shift)) return 0;
+    if (day + 1 >= context.days) return 0;
+    if (!isWeekend(context, day + 1)) return 0;
+    if (state.shifts[day + 1] !== "") return 0;
+
+    const currentValues = context.staffStates.map(candidate => candidate.counts.weekendWork);
+    const currentRange = getRange(currentValues);
+    if (currentRange < 2) return 0;
+
+    const maxWeekendWork = Math.max(...currentValues);
+    const lowWeekendGap = Math.max(0, maxWeekendWork - state.counts.weekendWork);
+
+    return lowWeekendGap * AUTO_SHIFT_CONFIG.nightBeforeWeekendLowCountWeight;
 
 }
 
