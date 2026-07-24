@@ -224,9 +224,9 @@ tbody td:hover{
 
     left:0;
 
-    width:220px;
+    width:90px;
 
-    min-width:220px;
+    min-width:90px;
 
     background:#fff;
 
@@ -234,9 +234,13 @@ tbody td:hover{
 
     text-align:left;
 
-    padding-left:16px;
+    padding-left:10px;
+
+    padding-right:8px;
 
     font-weight:bold;
+
+    white-space:nowrap;
 
     border-right:2px solid var(--border);
 
