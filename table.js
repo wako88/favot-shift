@@ -108,7 +108,7 @@ function createHeader(year, month, days) {
 function createBody(days) {
 
     let html = "";
-    const activeStaff = staffList.filter(staff => staff.enabled);
+    const activeStaff = getShiftTableStaffOrder();
 
     activeStaff.forEach(staff => {
 
@@ -140,6 +140,22 @@ function createBody(days) {
     });
 
     shiftBody.innerHTML = html;
+
+}
+
+function getShiftTableStaffOrder() {
+
+    return staffList
+        .map((staff, index) => ({ staff, index }))
+        .filter(item => item.staff.enabled)
+        .sort((a, b) => {
+            const aExecutive = isExecutiveStaff(a.staff);
+            const bExecutive = isExecutiveStaff(b.staff);
+
+            if (aExecutive !== bExecutive) return aExecutive ? -1 : 1;
+            return a.index - b.index;
+        })
+        .map(item => item.staff);
 
 }
 
@@ -457,8 +473,14 @@ function isAutoTargetStaff(staff) {
 
     if (!staff || !staff.enabled) return false;
     if (staff.autoAssign === false) return false;
-    if (staff.name && staff.name.includes("副社長")) return false;
+    if (isExecutiveStaff(staff)) return false;
     return true;
+
+}
+
+function isExecutiveStaff(staff) {
+
+    return !!(staff && staff.name && staff.name.includes("副社長"));
 
 }
 
