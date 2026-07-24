@@ -14,6 +14,15 @@ const SHIFT_MASTER = [
     "有"
 ];
 
+const SHIFT_DISPLAY_NAMES = {
+    "早①": "早",
+    "夜①": "夜"
+};
+
+function getShiftDisplayName(shift) {
+    return SHIFT_DISPLAY_NAMES[shift] || shift || "";
+}
+
 const COUNT_COLUMNS = [
     { key: "early", label: "早", className: "earlyCount" },
     { key: "late", label: "遅", className: "lateCount" },
@@ -150,7 +159,7 @@ function attachCellEvents() {
 
             current = SHIFT_MASTER[index];
             cell.dataset.shift = current;
-            cell.textContent = current;
+            cell.textContent = getShiftDisplayName(current);
 
             cell.classList.remove("autoAssignedCell", "autoWarningCell");
             delete cell.dataset.autoAssigned;
@@ -1517,7 +1526,7 @@ function restoreContextSnapshot(context, snapshot) {
             const cell = item.state.cells[day];
             item.state.shifts[day] = shift;
             cell.dataset.shift = shift;
-            cell.textContent = shift;
+            cell.textContent = getShiftDisplayName(shift);
 
             if (item.sources[day]) {
                 cell.dataset.source = item.sources[day];
@@ -1825,7 +1834,7 @@ function setAutoShiftValue(state, day, shift) {
     state.shifts[day] = shift;
     const cell = state.cells[day];
     cell.dataset.shift = shift;
-    cell.textContent = shift;
+    cell.textContent = getShiftDisplayName(shift);
 
     if (shift) {
         cell.dataset.source = "auto";
@@ -2240,7 +2249,7 @@ function replaceAutoShift(state, day, shift) {
 
     const cell = state.cells[day];
     cell.dataset.shift = shift;
-    cell.textContent = shift;
+    cell.textContent = getShiftDisplayName(shift);
 
     if (shift) {
         cell.dataset.source = "auto";
@@ -2794,7 +2803,7 @@ function validateAutoShift(context) {
             const nextShift = state.shifts[day + 1];
 
             if (isNightShift(shift) && (isEarlyShift(nextShift) || nextShift === "遅")) {
-                warnings.push(`⚠ ${state.staff.name}さん：${day + 1}日の夜勤翌日に${day + 2}日${nextShift}が入っています`);
+                warnings.push(`⚠ ${state.staff.name}さん：${day + 1}日の夜勤翌日に${day + 2}日${getShiftDisplayName(nextShift)}が入っています`);
                 markCells(state, day, day + 1);
             }
 
@@ -2814,7 +2823,7 @@ function validateAutoShift(context) {
 
         const night1Staff = context.staffStates.find(state => state.shifts[day] === "夜①");
         if (night1Staff && !hasShiftByOtherStaff(context, day + 1, "早①", night1Staff)) {
-            warnings.push(`⚠ ${day + 1}日夜①の翌日${day + 2}日に、別社員の早①がありません`);
+            warnings.push(`⚠ ${day + 1}日${getShiftDisplayName("夜①")}の翌日${day + 2}日に、別社員の${getShiftDisplayName("早①")}がありません`);
         }
 
         const date = new Date(context.year, context.month - 1, day + 1);
@@ -2879,7 +2888,7 @@ function writeAutoShiftToTable(context) {
 
             const cell = state.cells[day];
             cell.dataset.shift = shift;
-            cell.textContent = shift;
+            cell.textContent = getShiftDisplayName(shift);
 
             if (shift) {
                 cell.dataset.source = "auto";
@@ -3084,7 +3093,7 @@ function addImbalanceWarnings(context, warnings) {
 
     [
         { key: "night", label: "夜勤回数" },
-        { key: "early1", label: "早①回数" },
+        { key: "early1", label: `${getShiftDisplayName("早①")}回数` },
         { key: "early2", label: "早②回数" },
         { key: "late", label: "遅番回数" },
         { key: "weekendWork", label: "土日勤務回数" },

@@ -74,7 +74,7 @@ function loadData() {
             const shift = data.shifts[rowIndex][colIndex] || "";
 
             cell.dataset.shift = shift;
-            cell.textContent = shift;
+            cell.textContent = getShiftDisplayName(shift);
 
         });
 
