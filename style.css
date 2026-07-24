@@ -431,21 +431,33 @@ dialog::backdrop{
    印刷
 =========================== */
 
+.printShiftArea{
+
+    display:none;
+
+}
+
 @media print{
+
+    @page{
+
+        size:A4 landscape;
+
+        margin:7mm;
+
+    }
 
     body{
 
         background:#fff;
 
+        color:#111;
+
     }
 
     .header{
 
-        background:#fff;
-
-        color:#000;
-
-        border-bottom:2px solid #000;
+        display:none;
 
     }
 
@@ -463,37 +475,144 @@ dialog::backdrop{
 
     .tableWrapper{
 
-        border:none;
-
-        box-shadow:none;
-
-        max-height:none;
-
-        overflow:visible;
+        display:none;
 
     }
 
-    table{
+    .printShiftArea{
+
+        display:block;
+
+    }
+
+    .printShiftTitle{
+
+        color:#111;
+
+        font-size:14px;
+
+        font-weight:700;
+
+        line-height:1.2;
+
+        margin:0 0 3mm;
+
+        text-align:left;
+
+    }
+
+    .printShiftBlock{
+
+        break-inside:avoid;
+
+        page-break-inside:avoid;
+
+    }
+
+    .printShiftBlockTitle{
+
+        color:#111;
+
+        font-size:11px;
+
+        font-weight:700;
+
+        line-height:1.1;
+
+        margin:0 0 1.5mm;
+
+    }
+
+    .printShiftDivider{
+
+        border-top:1.2px solid #555;
+
+        height:0;
+
+        margin:4.5mm 0;
+
+    }
+
+    .printShiftTable{
+
+        border-collapse:collapse;
+
+        table-layout:fixed;
 
         width:100%;
 
     }
 
-    th,
-    td{
+    .printShiftTable th,
+    .printShiftTable td{
 
-        font-size:11px;
+        border:1.2px solid #333;
 
-        height:28px;
+        color:#111;
+
+        font-size:12.5px;
+
+        font-weight:700;
+
+        height:27px;
+
+        line-height:1.1;
+
+        padding:0 2px;
+
+        text-align:center;
+
+        vertical-align:middle;
 
     }
 
-    thead th,
-    .stickyLeft,
-    .countHeaderCell,
-    .countCell{
+    .printShiftTable thead th{
 
-        position:static;
+        background:#f2f2f2;
+
+    }
+
+    .printShiftTable thead small{
+
+        display:block;
+
+        font-size:8.5px;
+
+        font-weight:700;
+
+        line-height:1;
+
+        margin-top:1px;
+
+    }
+
+    .printStaffCell{
+
+        width:86px;
+
+        text-align:left!important;
+
+        white-space:nowrap;
+
+    }
+
+    .printCountCell{
+
+        width:38px;
+
+    }
+
+    .printCountCell small{
+
+        display:block;
+
+        font-size:7.5px;
+
+        font-weight:700;
+
+        line-height:1;
+
+        margin-top:1px;
 
     }
 
