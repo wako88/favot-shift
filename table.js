@@ -317,6 +317,9 @@ function comparePlanScore(a, b) {
     const aWorkOverflow = Math.max(0, a.workRange - 1);
     const bWorkOverflow = Math.max(0, b.workRange - 1);
     if (aWorkOverflow !== bWorkOverflow) return aWorkOverflow - bWorkOverflow;
+    const aWeekendOverflow = Math.max(0, a.weekendRange - 1);
+    const bWeekendOverflow = Math.max(0, b.weekendRange - 1);
+    if (aWeekendOverflow !== bWeekendOverflow) return aWeekendOverflow - bWeekendOverflow;
     if (a.categoryTargetPenalty !== b.categoryTargetPenalty) return a.categoryTargetPenalty - b.categoryTargetPenalty;
     if (a.categoryRangePenalty !== b.categoryRangePenalty) return a.categoryRangePenalty - b.categoryRangePenalty;
     const aEarly1Overflow = Math.max(0, a.early1Range - 1);
@@ -326,9 +329,6 @@ function comparePlanScore(a, b) {
     const bEarly2Overflow = Math.max(0, b.early2Range - 1);
     if (aEarly2Overflow !== bEarly2Overflow) return aEarly2Overflow - bEarly2Overflow;
     if (a.missingDoubleRest !== b.missingDoubleRest) return a.missingDoubleRest - b.missingDoubleRest;
-    const aWeekendOverflow = Math.max(0, a.weekendRange - 1);
-    const bWeekendOverflow = Math.max(0, b.weekendRange - 1);
-    if (aWeekendOverflow !== bWeekendOverflow) return aWeekendOverflow - bWeekendOverflow;
     if (a.lateStandardPenalty !== b.lateStandardPenalty) return a.lateStandardPenalty - b.lateStandardPenalty;
     if (a.restPatternPenalty !== b.restPatternPenalty) return a.restPatternPenalty - b.restPatternPenalty;
     if (a.workStreakPenalty !== b.workStreakPenalty) return a.workStreakPenalty - b.workStreakPenalty;
@@ -773,6 +773,7 @@ function polishAutoShift(context) {
     improveWeekendBalanceByPairedExchange(context);
     improveFinalDoubleRest(context);
     improveNight1LongRuns(context);
+    improveWeekendBalanceByPairedExchange(context);
 
 }
 
@@ -2026,6 +2027,10 @@ function isRequiredEarly2AfterWednesdayNight2(context, day, state) {
 
 function hasPersonalNightConnectionViolation(state) {
 
+    const firstShift = state.shifts[0] || "";
+    if (state.previousLastShift === "夜②" && firstShift !== "休") return true;
+    if (isNightShift(state.previousLastShift) && (isEarlyShift(firstShift) || firstShift === "遅")) return true;
+
     for (let day = 0; day < state.shifts.length - 1; day++) {
         const shift = state.shifts[day];
         const nextShift = state.shifts[day + 1];
@@ -2724,6 +2729,8 @@ function countAbsoluteViolations(context) {
         if (date.getDay() === 3 && night2Staff && !hasShiftByOtherStaff(context, day + 1, "早②", night2Staff)) count += 3;
     }
 
+    count += countMonthBoundaryGlobalRuleViolations(context);
+
     return count;
 
 }
@@ -2798,6 +2805,17 @@ function validateAutoShift(context) {
             markCells(state, range.start - 1, range.end - 1);
         });
 
+        const firstShift = state.shifts[0] || "";
+        if (isNightShift(state.previousLastShift) && (isEarlyShift(firstShift) || firstShift === "遅")) {
+            warnings.push(`⚠ ${state.staff.name}さん：前月末の夜勤翌日に1日${getShiftDisplayName(firstShift)}が入っています`);
+            markCells(state, 0, 0);
+        }
+
+        if (state.previousLastShift === "夜②" && firstShift !== "休") {
+            warnings.push(`⚠ ${state.staff.name}さん：前月末の夜②翌日の1日が休みではありません`);
+            markCells(state, 0, 0);
+        }
+
         for (let day = 0; day < context.days - 1; day++) {
             const shift = state.shifts[day];
             const nextShift = state.shifts[day + 1];
@@ -2818,6 +2836,17 @@ function validateAutoShift(context) {
         }
 
     });
+
+    const previousNight1Staff = context.staffStates.find(state => state.previousLastShift === "夜①");
+    if (previousNight1Staff && !hasShiftByOtherStaff(context, 0, "早①", previousNight1Staff)) {
+        warnings.push(`⚠ 前月末${getShiftDisplayName("夜①")}の翌日1日に、別社員の${getShiftDisplayName("早①")}がありません`);
+    }
+
+    const previousDate = getPreviousMonthLastDate(context);
+    const previousNight2Staff = context.staffStates.find(state => state.previousLastShift === "夜②");
+    if (previousDate.getDay() === 3 && previousNight2Staff && !hasShiftByOtherStaff(context, 0, "早②", previousNight2Staff)) {
+        warnings.push("⚠ 前月末水曜夜②の翌日1日に、別社員の早②がありません");
+    }
 
     for (let day = 0; day < context.days - 1; day++) {
 
@@ -2929,6 +2958,31 @@ function hasShiftOnDay(context, day, shift) {
 function hasShiftByOtherStaff(context, day, shift, excludedState) {
 
     return context.staffStates.some(state => state !== excludedState && state.shifts[day] === shift);
+
+}
+
+function getPreviousMonthLastDate(context) {
+
+    return new Date(context.year, context.month - 1, 0);
+
+}
+
+function countMonthBoundaryGlobalRuleViolations(context) {
+
+    let count = 0;
+
+    const previousNight1Staff = context.staffStates.find(state => state.previousLastShift === "夜①");
+    if (previousNight1Staff && !hasShiftByOtherStaff(context, 0, "早①", previousNight1Staff)) {
+        count += 3;
+    }
+
+    const previousDate = getPreviousMonthLastDate(context);
+    const previousNight2Staff = context.staffStates.find(state => state.previousLastShift === "夜②");
+    if (previousDate.getDay() === 3 && previousNight2Staff && !hasShiftByOtherStaff(context, 0, "早②", previousNight2Staff)) {
+        count += 3;
+    }
+
+    return count;
 
 }
 
