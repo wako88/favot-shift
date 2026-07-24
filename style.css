@@ -128,6 +128,8 @@ main{
 
     overflow:auto;
 
+    isolation:isolate;
+
     max-height:75vh;
 
     box-shadow:0 3px 10px rgba(0,0,0,.08);
@@ -222,9 +224,9 @@ tbody td:hover{
 
     left:0;
 
-    width:120px;
+    width:220px;
 
-    min-width:120px;
+    min-width:220px;
 
     background:#fff;
 
@@ -242,52 +244,64 @@ tbody td:hover{
 
 .staffHeaderCell{
 
-    z-index:90;
+    z-index:70;
 
     background:#f8f9fb;
 
 }
 
 /* ===========================
-   集計列
+   勤務回数列
 =========================== */
 
 .countHeaderCell,
 .countCell{
 
     position:sticky;
-    width:45px;
-    min-width:45px;
+
+    right:0;
+
+    width:50px;
+
+    min-width:50px;
+
     background:#fff;
+
     border-left:1px solid var(--border);
-    z-index:60;
+
+    z-index:50;
+
     font-weight:bold;
+
     cursor:default;
+
+    background-clip:border-box;
 
 }
 
 .countHeaderCell{
 
-    z-index:100;
+    z-index:80;
+
     background:#f8f9fb;
 
 }
 
 .earlyCount{
 
-    right:135px;
+    right:150px;
 
 }
 
 .lateCount{
 
-    right:90px;
+    right:100px;
 
 }
 
 .nightCount{
 
-    right:45px;
+    right:50px;
 
 }
 
@@ -467,6 +481,15 @@ dialog::backdrop{
         font-size:11px;
 
         height:28px;
+
+    }
+
+    thead th,
+    .stickyLeft,
+    .countHeaderCell,
+    .countCell{
+
+        position:static;
 
     }
 
