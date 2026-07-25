@@ -572,6 +572,14 @@ dialog::backdrop{
 
     }
 
+    .printShiftTable thead th,
+    .printStaffCell,
+    .printDateCell{
+
+        border:1.2px solid #333;
+
+    }
+
     .printShiftTable thead small{
 
         display:block;
