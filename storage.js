@@ -5,10 +5,34 @@
 
 const STORAGE_KEY = "favotShiftVer1";
 const STAFF_MASTER_KEY = `${STORAGE_KEY}:staffMaster`;
+const INITIAL_SEED_KEY_PREFIX = `${STORAGE_KEY}:initialSeeded`;
 
 function getMonthStorageKey(month) {
 
     return `${STORAGE_KEY}:${month}`;
+
+}
+
+function getInitialSeedKey(month) {
+
+    return `${INITIAL_SEED_KEY_PREFIX}:${month}`;
+
+}
+
+function seedInitialMonthDataIfNeeded(month) {
+
+    const initialData = window.FAVOT_SHIFT_INITIAL_DATA
+        ? window.FAVOT_SHIFT_INITIAL_DATA[month]
+        : null;
+
+    if (!initialData) return false;
+    if (localStorage.getItem(getMonthStorageKey(month))) return false;
+    if (localStorage.getItem(getInitialSeedKey(month))) return false;
+
+    localStorage.setItem(getMonthStorageKey(month), JSON.stringify(initialData));
+    localStorage.setItem(getInitialSeedKey(month), "true");
+
+    return true;
 
 }
 
@@ -68,6 +92,8 @@ function saveData() {
 function loadData() {
 
     const requestedMonth = monthSelect.value;
+    seedInitialMonthDataIfNeeded(requestedMonth);
+
     let json = localStorage.getItem(getMonthStorageKey(requestedMonth));
 
     if (!json) {
