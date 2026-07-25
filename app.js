@@ -37,6 +37,9 @@ let staffList = [
 ];
 
 const monthSelect = document.getElementById("monthSelect");
+const createBtn = document.getElementById("createBtn");
+const clearAutoBtn = document.getElementById("clearAutoBtn");
+const resetMonthBtn = document.getElementById("resetMonthBtn");
 
 const shiftHead = document.getElementById("shiftHead");
 const shiftBody = document.getElementById("shiftBody");
@@ -48,14 +51,29 @@ monthSelect.value =
 
 monthSelect.addEventListener("change", () => {
 
-    buildTable();
+    if (!loadData()) {
 
-    saveData();
+        loadStaffMaster();
+        buildTable();
+
+    }
 
 });
+
+createBtn.addEventListener("click", createAutoShift);
+clearAutoBtn.addEventListener("click", clearAutoShiftResult);
+resetMonthBtn.addEventListener("click", resetCurrentMonthShift);
+
+const hasStaffMaster = loadStaffMaster();
 
 if (!loadData()) {
 
     buildTable();
+
+}
+
+if (!hasStaffMaster) {
+
+    saveStaffMaster();
 
 }

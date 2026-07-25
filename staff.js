@@ -112,6 +112,7 @@ function attachStaffEvents() {
 
             staff.name = e.target.value.trim() || "スタッフ";
 
+            saveStaffMaster();
             saveData();
 
             buildTable();
@@ -133,6 +134,7 @@ function attachStaffEvents() {
 
             staff.enabled = e.target.checked;
 
+            saveStaffMaster();
             saveData();
 
             buildTable();
@@ -155,6 +157,7 @@ function attachStaffEvents() {
 
             staff.autoAssign = e.target.checked;
 
+            saveStaffMaster();
             saveData();
 
             renderStaffList();
@@ -183,6 +186,7 @@ function addStaff() {
 
     });
 
+    saveStaffMaster();
     saveData();
 
     buildTable();
