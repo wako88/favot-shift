@@ -19,6 +19,13 @@ const SHIFT_DISPLAY_NAMES = {
     "夜①": "夜"
 };
 
+const EARLY1_SHIFT = SHIFT_MASTER[1];
+const EARLY2_SHIFT = SHIFT_MASTER[2];
+const LATE_SHIFT = SHIFT_MASTER[3];
+const NIGHT1_SHIFT = SHIFT_MASTER[4];
+const NIGHT2_SHIFT = SHIFT_MASTER[5];
+const REST_SHIFT = SHIFT_MASTER[6];
+
 function getShiftDisplayName(shift) {
     return SHIFT_DISPLAY_NAMES[shift] || shift || "";
 }
@@ -227,6 +234,8 @@ function createAutoShift() {
 
     applyShiftPlan(context, bestPlan);
     writeAutoShiftToTable(context);
+    repairRequiredShiftPairs(context);
+    writeAutoShiftToTable(context);
 
     updateCount();
 
@@ -281,15 +290,23 @@ function findBestAutoShiftPlan() {
 function buildAutoShiftPlan(context) {
 
     placeNightShifts(context);
+    repairRequiredShiftPairs(context);
     applyGlobalNextDayRules(context);
+    repairRequiredShiftPairs(context);
     adjustRestDays(context);
     placeDailyBaseShifts(context);
+    repairRequiredShiftPairs(context);
     fillRemainingWork(context);
     reduceBlankCells(context);
     rebalanceBlankCells(context);
+    repairRequiredShiftPairs(context);
     repairRestDayBounds(context);
     reduceBlankCells(context);
     polishAutoShift(context);
+    repairRequiredShiftPairs(context);
+    repairBlankCellsWithRequiredProtection(context);
+    repairRequiredShiftPairs(context);
+    
 
 }
 
@@ -369,6 +386,7 @@ function clearAutoAssignedCells() {
         cell.textContent = "";
         delete cell.dataset.source;
         delete cell.dataset.autoAssigned;
+        delete cell.dataset.requiredShift;
         cell.classList.remove("autoAssignedCell", "autoWarningCell");
     });
 
@@ -399,6 +417,7 @@ function resetCurrentMonthShift() {
         cell.textContent = "";
         delete cell.dataset.source;
         delete cell.dataset.autoAssigned;
+        delete cell.dataset.requiredShift;
         cell.classList.remove("autoAssignedCell", "autoWarningCell");
     });
 
@@ -447,9 +466,8 @@ function createAutoShiftContext(attempt = 0) {
                 previousConsecutiveWork: countTrailingWorkDays(previousShifts),
                 previousLastShift: previousShifts.length ? previousShifts[previousShifts.length - 1] : "",
                 previousRestCount,
-                targetRestDays: previousRestCount === AUTO_SHIFT_CONFIG.minRestDays
-                    ? AUTO_SHIFT_CONFIG.maxRestDays
-                    : AUTO_SHIFT_CONFIG.minRestDays,
+                // 8休以上あれば運用可能なため、9休に寄せる目的だけで休みを増やさない。
+                targetRestDays: AUTO_SHIFT_CONFIG.minRestDays,
                 counts: getEmptyCounts()
             };
         })
@@ -503,39 +521,59 @@ function placeNightShifts(context) {
 function placeNight2Set(context, day) {
 
     if (hasShiftOnDay(context, day, "夜②")) return null;
-
     const candidates = getStateOrder(context, context.staffStates, day)
         .filter(state => canAssignShift(context, state, day, "夜②"))
-        .filter(state => day + 1 >= context.days || canAssignShift(context, state, day + 1, "休"))
-        .filter(state => {
-            if (day + 1 >= context.days) return true;
-            return findNextDayEarly2Partner(context, day, state) !== null;
-        })
-        .sort((a, b) => scoreSetCandidate(context, a, day, "夜②") - scoreSetCandidate(context, b, day, "夜②"));
+        .sort((a, b) =>
+            scoreSetCandidate(context, a, day, "夜②") -
+            scoreSetCandidate(context, b, day, "夜②")
+        );
 
     for (const state of candidates) {
-        const partner = day + 1 < context.days ? findNextDayEarly2Partner(context, day, state) : null;
+        if (day + 1 >= context.days) {
+            if (assignShift(state, day, NIGHT2_SHIFT, true)) {
+                return state;
+            }
+            continue;
+        }
 
+        // まず水曜夜②を仮配置
         if (!assignShift(state, day, "夜②", true)) continue;
 
-        if (day + 1 < context.days && !assignShift(state, day + 1, "休", true)) {
+        // 夜②本人は翌日休み
+        if (!canAssignShift(context, state, day + 1, "休")) {
             replaceAutoShift(state, day, "");
             continue;
         }
 
-        if (partner && !hasShiftOnDay(context, day + 1, "早②")) {
-            if (!assignShift(partner, day + 1, "早②", true)) {
-                replaceAutoShift(state, day, "");
-                replaceAutoShift(state, day + 1, "");
-                continue;
-            }
+        if (!assignShift(state, day + 1, "休", true)) {
+            replaceAutoShift(state, day, "");
+            continue;
+        }
+
+        // 別社員の木曜早②を探す。既に別スタッフの早②がある場合はセット成立として扱う。
+        if (hasShiftByOtherStaff(context, day + 1, "早②", state)) {
+            return state;
+        }
+
+        // 別社員の木曜早②を探す
+        const partner = findNextDayEarly2Partner(context, day, state);
+
+        if (!partner) {
+            replaceAutoShift(state, day + 1, "");
+            replaceAutoShift(state, day, "");
+            continue;
+        }
+
+        if (!assignShift(partner, day + 1, "早②", true)) {
+            replaceAutoShift(state, day + 1, "");
+            replaceAutoShift(state, day, "");
+            continue;
         }
 
         return state;
     }
 
     return null;
-
 }
 
 function placeNight1Set(context, day) {
@@ -608,6 +646,150 @@ function applyGlobalNextDayRules(context) {
 
 }
 
+function repairRequiredShiftPairs(context) {
+
+    clearRequiredShiftMarkers(context);
+
+    for (let day = 0; day < context.days; day++) {
+        const date = new Date(context.year, context.month - 1, day + 1);
+
+        if (date.getDay() === 3) {
+            repairWednesdayNight2Set(context, day);
+        }
+    }
+
+    for (let day = 0; day < context.days - 1; day++) {
+        const night1Staff = context.staffStates.find(state => state.shifts[day] === NIGHT1_SHIFT);
+        if (!night1Staff) continue;
+
+        markRequiredShift(night1Staff, day);
+
+        let early1Staff = context.staffStates.find(state => state !== night1Staff && state.shifts[day + 1] === EARLY1_SHIFT);
+        if (!early1Staff) {
+            early1Staff = placeRequiredPartnerShift(context, day + 1, EARLY1_SHIFT, night1Staff);
+        }
+
+        if (early1Staff) {
+            markRequiredShift(early1Staff, day + 1);
+        }
+    }
+
+}
+
+function repairWednesdayNight2Set(context, day) {
+
+    let night2Staff = context.staffStates.find(state => state.shifts[day] === NIGHT2_SHIFT);
+
+    if (!night2Staff) {
+        placeNight2Set(context, day);
+        night2Staff = context.staffStates.find(state => state.shifts[day] === NIGHT2_SHIFT);
+    }
+
+    if (!night2Staff) {
+        night2Staff = placeRequiredPartnerShift(context, day, NIGHT2_SHIFT, null);
+    }
+
+    if (!night2Staff) return;
+
+    markRequiredShift(night2Staff, day);
+
+    if (day + 1 >= context.days) {
+        return;
+    }
+
+    // 水曜夜②は、本人の翌日休みと別スタッフの木曜早②までをセットとして保護する。
+    if (night2Staff.shifts[day + 1] !== REST_SHIFT) {
+        forceRequiredShift(context, night2Staff, day + 1, REST_SHIFT);
+    }
+
+    if (night2Staff.shifts[day + 1] === REST_SHIFT) {
+        markRequiredShift(night2Staff, day + 1);
+    }
+
+    let early2Staff = context.staffStates.find(state => state !== night2Staff && state.shifts[day + 1] === EARLY2_SHIFT);
+    if (!early2Staff) {
+        early2Staff = placeRequiredPartnerShift(context, day + 1, EARLY2_SHIFT, night2Staff);
+    }
+
+    if (early2Staff) {
+        markRequiredShift(early2Staff, day + 1);
+    }
+
+}
+
+function placeRequiredPartnerShift(context, day, shift, excludedState) {
+
+    const candidates = getStateOrder(context, context.staffStates, day)
+        .filter(state => state !== excludedState)
+        .filter(state => canUseCellForRequiredShift(context, state, day, shift))
+        .sort((a, b) => scoreSetCandidate(context, a, day, shift) - scoreSetCandidate(context, b, day, shift));
+
+    for (const state of candidates) {
+        if (forceRequiredShift(context, state, day, shift)) {
+            return state;
+        }
+    }
+
+    return null;
+
+}
+
+function canUseCellForRequiredShift(context, state, day, shift) {
+
+    if (day < 0 || day >= context.days) return false;
+    if (state.fixed[day]) return state.shifts[day] === shift;
+    if (isRequiredAutoCell(state.cells[day]) && state.shifts[day] !== shift) return false;
+    if (state.shifts[day] && !isAutoAssignedCell(state.cells[day]) && state.shifts[day] !== shift) return false;
+
+    const oldShift = state.shifts[day];
+    state.shifts[day] = "";
+    const canAssign = canAssignShift(context, state, day, shift);
+    state.shifts[day] = oldShift;
+
+    return canAssign || oldShift === shift;
+
+}
+
+function forceRequiredShift(context, state, day, shift) {
+
+    if (!canUseCellForRequiredShift(context, state, day, shift)) return false;
+
+    if (state.shifts[day] !== shift) {
+        if (!setAutoShiftValue(state, day, shift, { allowRequired: true })) {
+            return false;
+        }
+    }
+
+    markRequiredShift(state, day);
+    refreshAutoCounts(state, context);
+    return true;
+
+}
+
+function clearRequiredShiftMarkers(context) {
+
+    context.staffStates.forEach(state => {
+        state.cells.forEach(cell => {
+            delete cell.dataset.requiredShift;
+        });
+    });
+
+}
+
+function markRequiredShift(state, day) {
+
+    if (day < 0 || day >= state.cells.length) return;
+    if (!isAutoAssignedCell(state.cells[day])) return;
+    state.cells[day].dataset.requiredShift = "true";
+
+}
+
+function isRequiredAutoCell(cell) {
+
+    return isAutoAssignedCell(cell) && cell.dataset.requiredShift === "true";
+
+}
+
 function placeDailyBaseShifts(context) {
 
     getDayOrder(context, 2).forEach(day => {
@@ -618,10 +800,7 @@ function placeDailyBaseShifts(context) {
             }
         });
 
-        const date = new Date(context.year, context.month - 1, day + 1);
-        if (date.getDay() !== 3 && !hasShiftOnDay(context, day, "早②")) {
-            placeShift(context, day, "早②");
-        }
+        
 
     });
 
@@ -686,14 +865,15 @@ function reduceBlankCells(context) {
 
         let changed = false;
 
-        context.staffStates.forEach(state => {
-
-            for (let day = 0; day < context.days; day++) {
+        const blanks = getBlankTargets(context);
+        for (const blank of blanks) {
+            const state = blank.state;
+            const day = blank.day;
 
                 if (state.shifts[day] !== "") continue;
 
-                if (countRestDays(state) < AUTO_SHIFT_CONFIG.minRestDays && canAssignShift(context, state, day, "休")) {
-                    changed = assignShift(state, day, "休", true) || changed;
+                if (countRestDays(state) < AUTO_SHIFT_CONFIG.minRestDays && fillBlankWithRestIfSafe(context, state, day)) {
+                    changed = true;
                     continue;
                 }
 
@@ -703,18 +883,30 @@ function reduceBlankCells(context) {
                     continue;
                 }
 
-                if (countRestDays(state) < AUTO_SHIFT_CONFIG.maxRestDays && canAssignShift(context, state, day, "休")) {
-                    changed = assignShift(state, day, "休", true) || changed;
+                // 空白を休みで埋めるより先に、既存勤務・既存休みの移動で埋められるか試す。
+                // 9休にこだわって空白を休みにすると、3連休や勤務不足が増えやすいため。
+                if (moveSameDayAutoWorkToBlank(context, state, day)) {
+                    changed = true;
                     continue;
                 }
 
-                if (moveSameDayAutoWorkToBlank(context, state, day)) {
+                if (fillBlankByMovingAutoRest(context, state, day)) {
+                    changed = true;
+                    continue;
+                }
+
+                if (fillBlankByMovingAutoWork(context, state, day)) {
+                    changed = true;
+                    continue;
+                }
+
+                // 移動で埋められない空白だけ、最後の手段として休みにする。
+                // 9休を目標にするのではなく、空白0を優先するための例外。
+                if (fillBlankWithRestIfSafe(context, state, day)) {
                     changed = true;
                 }
 
-            }
-
-        });
+        }
 
         if (!changed) break;
 
@@ -741,6 +933,149 @@ function rebalanceBlankCells(context) {
 
         if (!changed) break;
     }
+
+}
+
+function repairBlankCellsWithRequiredProtection(context) {
+
+    context.blankRepairSeen = new Set([createShiftPlanFingerprint(context)]);
+    context.blankRepairAttempts = 0;
+
+    for (let pass = 0; pass < 4; pass++) {
+        let changed = false;
+
+        const blanks = getBlankTargets(context);
+        for (const blank of blanks) {
+            if (blank.state.shifts[blank.day] !== "") continue;
+
+            if (fillBlankWithRestIfSafe(context, blank.state, blank.day)) {
+                changed = true;
+                continue;
+            }
+
+            if (moveSameDayAutoWorkToBlank(context, blank.state, blank.day)) {
+                changed = true;
+                continue;
+            }
+
+            if (fillBlankByMovingAutoRest(context, blank.state, blank.day)) {
+                changed = true;
+                continue;
+            }
+
+            if (fillBlankByMovingAutoWork(context, blank.state, blank.day)) {
+                changed = true;
+            }
+        }
+
+        if (!changed) break;
+    }
+
+}
+
+function fillBlankWithRestIfSafe(context, state, day) {
+
+    if (countRestDays(state) >= AUTO_SHIFT_CONFIG.maxRestDays) return false;
+    if (wouldCreateThreeConsecutiveRest(state, day)) return false;
+    if (!canAssignShift(context, state, day, REST_SHIFT)) return false;
+
+    return applyBlankRepairIfBetter(context, () => {
+        assignShift(state, day, REST_SHIFT, true);
+    });
+
+}
+
+function applyBlankRepairIfBetter(context, action) {
+
+    if (context.blankRepairAttempts >= 160) return false;
+    context.blankRepairAttempts++;
+
+    const before = getBlankRepairScore(context);
+    const snapshot = captureContextSnapshot(context);
+
+    action();
+
+    const fingerprint = createShiftPlanFingerprint(context);
+    if (context.blankRepairSeen && context.blankRepairSeen.has(fingerprint)) {
+        restoreContextSnapshot(context, snapshot);
+        return false;
+    }
+
+    if (context.blankRepairSeen) {
+        context.blankRepairSeen.add(fingerprint);
+    }
+
+    const after = getBlankRepairScore(context);
+    if (isBlankRepairBetter(before, after)) {
+        return true;
+    }
+
+    restoreContextSnapshot(context, snapshot);
+    return false;
+
+}
+
+function getBlankRepairScore(context) {
+
+    return {
+        violations: countAbsoluteViolations(context),
+        blanks: countBlankCells(context),
+        threeRestBlocks: countThreeConsecutiveRestBlocks(context),
+        restOutOfRange: countRestOutOfRangeStaff(context)
+    };
+
+}
+
+function isBlankRepairBetter(before, after) {
+
+    if (after.violations !== 0) return false;
+    if (after.violations > before.violations) return false;
+    if (after.restOutOfRange > 0) return false;
+    if (after.threeRestBlocks > before.threeRestBlocks) return false;
+    return after.blanks < before.blanks;
+
+}
+
+function countRestOutOfRangeStaff(context) {
+
+    return context.staffStates.filter(state => {
+        const restDays = countRestDays(state);
+        return restDays < AUTO_SHIFT_CONFIG.minRestDays || restDays > AUTO_SHIFT_CONFIG.maxRestDays;
+    }).length;
+
+}
+
+function countThreeConsecutiveRestBlocks(context) {
+
+    return context.staffStates.reduce((total, state) => {
+        let count = 0;
+        for (let day = 0; day < state.shifts.length - 2; day++) {
+            if (isRestShift(state.shifts[day]) && isRestShift(state.shifts[day + 1]) && isRestShift(state.shifts[day + 2])) {
+                count++;
+            }
+        }
+        return total + count;
+    }, 0);
+
+}
+
+function wouldCreateThreeConsecutiveRest(state, day) {
+
+    if (isRestShift(state.shifts[day])) return false;
+
+    const original = state.shifts[day];
+    state.shifts[day] = REST_SHIFT;
+
+    let creates = false;
+    for (let index = Math.max(0, day - 2); index <= Math.min(state.shifts.length - 3, day); index++) {
+        if (isRestShift(state.shifts[index]) && isRestShift(state.shifts[index + 1]) && isRestShift(state.shifts[index + 2])) {
+            creates = true;
+            break;
+        }
+    }
+
+    state.shifts[day] = original;
+    return creates;
 
 }
 
@@ -1537,7 +1872,8 @@ function captureContextSnapshot(context) {
         state,
         shifts: [...state.shifts],
         sources: state.cells.map(cell => cell.dataset.source || ""),
-        autoAssigned: state.cells.map(cell => cell.dataset.autoAssigned || "")
+        autoAssigned: state.cells.map(cell => cell.dataset.autoAssigned || ""),
+        requiredShift: state.cells.map(cell => cell.dataset.requiredShift || "")
     }));
 
 }
@@ -1564,6 +1900,12 @@ function restoreContextSnapshot(context, snapshot) {
                 delete cell.dataset.autoAssigned;
                 cell.classList.remove("autoAssignedCell");
             }
+
+            if (item.requiredShift[day]) {
+                cell.dataset.requiredShift = item.requiredShift[day];
+            } else {
+                delete cell.dataset.requiredShift;
+            }
         });
 
         refreshAutoCounts(item.state, context);
@@ -1577,6 +1919,7 @@ function clearAutoCellsInWindow(context, start, end) {
         for (let day = start; day <= end; day++) {
             if (state.fixed[day]) continue;
             if (!isAutoAssignedCell(state.cells[day])) continue;
+            if (isRequiredAutoCell(state.cells[day])) continue;
             setAutoShiftValue(state, day, "");
         }
     });
@@ -1617,10 +1960,7 @@ function rebuildLocalWindow(context, start, end, variant) {
             }
         });
 
-        const date = new Date(context.year, context.month - 1, day + 1);
-        if (date.getDay() !== 3 && !hasShiftOnDay(context, day, "早②")) {
-            placeShift(context, day, "早②");
-        }
+        
     });
 
     getWindowDayOrder(context, start, end, 3).forEach(day => {
@@ -1676,6 +2016,8 @@ function isLocalRegenerationBetter(before, after) {
 
     if (after.violations !== 0) return false;
     if (after.violations > before.violations) return false;
+    if (after.threeRestBlocks > before.threeRestBlocks) return false;
+    if (after.blanks < before.blanks) return true;
     if (after.blanks > before.blanks) return false;
     if (after.workRange > before.workRange) return false;
     if (after.categoryTargetPenalty > before.categoryTargetPenalty) return false;
@@ -1831,7 +2173,9 @@ function canSwapAutoCells(a, b, day) {
     return !a.fixed[day]
         && !b.fixed[day]
         && isAutoAssignedCell(a.cells[day])
-        && isAutoAssignedCell(b.cells[day]);
+        && isAutoAssignedCell(b.cells[day])
+        && !isRequiredAutoCell(a.cells[day])
+        && !isRequiredAutoCell(b.cells[day]);
 
 }
 
@@ -1850,9 +2194,10 @@ function isPolishScoreBetter(before, after) {
 
 }
 
-function setAutoShiftValue(state, day, shift) {
+function setAutoShiftValue(state, day, shift, options = {}) {
 
     if (state.fixed[day]) return false;
+    if (!options.allowRequired && isRequiredAutoCell(state.cells[day]) && state.shifts[day] !== shift) return false;
 
     state.shifts[day] = shift;
     const cell = state.cells[day];
@@ -1866,6 +2211,7 @@ function setAutoShiftValue(state, day, shift) {
     } else {
         delete cell.dataset.source;
         delete cell.dataset.autoAssigned;
+        delete cell.dataset.requiredShift;
         cell.classList.remove("autoAssignedCell");
     }
 
@@ -1947,6 +2293,7 @@ function getMovableAutoRestDays(context, state, blankDay) {
         if (state.fixed[day]) continue;
         if (state.shifts[day] !== "休") continue;
         if (!isAutoAssignedCell(state.cells[day])) continue;
+        if (isRequiredAutoCell(state.cells[day])) continue;
         days.push(day);
     }
 
@@ -1957,38 +2304,34 @@ function getMovableAutoRestDays(context, state, blankDay) {
 }
 
 function getRestReplacementShifts(context, state, day) {
-
     const shifts = ["早①", "早②", "遅"];
 
     if (canUseNight1ForBlank(context, state, day)) {
         shifts.push("夜①");
     }
 
-    return shifts.sort((a, b) => getShiftCount(state, a) - getShiftCount(state, b));
-
+    return shifts.sort((a, b) =>
+        getShiftCount(state, a) - getShiftCount(state, b)
+    );
 }
 
 function moveAutoRestToBlank(context, state, blankDay, restDay, replacementShift) {
 
-    replaceAutoShift(state, restDay, "");
+    if (wouldCreateThreeConsecutiveRest(state, blankDay)) return false;
 
-    if (!canAssignShift(context, state, restDay, replacementShift)) {
-        replaceAutoShift(state, restDay, "休");
-        return false;
-    }
+    return applyBlankRepairIfBetter(context, () => {
+        replaceAutoShift(state, restDay, "");
 
-    if (!assignShift(state, blankDay, "休", true)) {
-        replaceAutoShift(state, restDay, "休");
-        return false;
-    }
+        if (!canAssignShift(context, state, restDay, replacementShift)) {
+            return;
+        }
 
-    if (assignShift(state, restDay, replacementShift, true)) {
-        return true;
-    }
+        if (!assignShift(state, blankDay, REST_SHIFT, true)) {
+            return;
+        }
 
-    replaceAutoShift(state, blankDay, "");
-    replaceAutoShift(state, restDay, "休");
-    return false;
+        assignShift(state, restDay, replacementShift, true);
+    });
 
 }
 
@@ -2005,13 +2348,24 @@ function fillBlankByMovingAutoWork(context, blankState, day) {
         .sort((a, b) => scoreMoveDonor(a, day) - scoreMoveDonor(b, day));
 
     for (const donor of donors) {
-        const shift = donor.shifts[day];
-        if (!canAssignShift(context, blankState, day, shift)) continue;
+    const shift = donor.shifts[day];
 
-        replaceAutoShift(donor, day, "休");
-        if (assignShift(blankState, day, shift, true)) return true;
-        replaceAutoShift(donor, day, shift);
+    if (wouldCreateThreeConsecutiveRest(donor, day)) continue;
+
+    if (applyBlankRepairIfBetter(context, () => {
+        // 先に元担当を休みにして、勤務枠を空ける。
+        replaceAutoShift(donor, day, REST_SHIFT);
+
+        // 移動後の仮状態で、空白スタッフへ移せるか確認する。
+        if (!canAssignShift(context, blankState, day, shift)) {
+            return;
+        }
+
+        assignShift(blankState, day, shift, true);
+    })) {
+        return true;
     }
+}
 
     return false;
 
@@ -2020,6 +2374,7 @@ function fillBlankByMovingAutoWork(context, blankState, day) {
 function canRemoveAutoShift(context, state, day) {
 
     const shift = state.shifts[day];
+    if (isRequiredAutoCell(state.cells[day])) return false;
     if (shift === "夜①" || shift === "夜②") return false;
     if (shift === "早①" && isRequiredEarlyAfterNight1(context, day, state)) return false;
     if (shift === "早②" && isRequiredEarly2AfterWednesdayNight2(context, day, state)) return false;
@@ -2052,13 +2407,14 @@ function hasPersonalNightConnectionViolation(state) {
     const firstShift = state.shifts[0] || "";
     if (state.previousLastShift === "夜②" && firstShift !== "休") return true;
     if (isNightShift(state.previousLastShift) && (isEarlyShift(firstShift) || firstShift === "遅")) return true;
-
+    if (state.previousLastShift === "遅" && isEarlyShift(firstShift)) return true;
     for (let day = 0; day < state.shifts.length - 1; day++) {
         const shift = state.shifts[day];
         const nextShift = state.shifts[day + 1];
 
         if (isNightShift(shift) && (isEarlyShift(nextShift) || nextShift === "遅")) return true;
         if (shift === "夜②" && nextShift !== "休") return true;
+        if (shift === "遅" && isEarlyShift(nextShift)) return true;
     }
 
     return false;
@@ -2104,13 +2460,24 @@ function moveSameDayAutoWorkToBlank(context, blankState, day) {
         .filter(state => state.shifts[day] === "遅")
         .filter(state => !state.fixed[day])
         .filter(state => isAutoAssignedCell(state.cells[day]))
-        .filter(state => countRestDays(state) < AUTO_SHIFT_CONFIG.maxRestDays)
+        .filter(state => canRemoveAutoShift(context, state, day))
         .sort((a, b) => countRestDays(a) - countRestDays(b));
 
     for (const donor of donors) {
-        if (!canAssignShift(context, blankState, day, donor.shifts[day])) continue;
+        const shift = donor.shifts[day];
 
-        if (replaceAutoShift(donor, day, "休") && assignShift(blankState, day, "遅", true)) {
+        if (wouldCreateThreeConsecutiveRest(donor, day)) continue;
+
+        if (applyBlankRepairIfBetter(context, () => {
+            // 同日の勤務を移す時は、先に元担当を休みにして勤務重複を解消してから判定する。
+            replaceAutoShift(donor, day, REST_SHIFT);
+
+            if (!canAssignShift(context, blankState, day, shift)) {
+                return;
+            }
+
+            assignShift(blankState, day, shift, true);
+        })) {
             return true;
         }
     }
@@ -2187,9 +2554,20 @@ function canAssignShift(context, state, day, shift) {
     if (state.fixed[day]) return false;
     if (state.shifts[day] !== "") return false;
     if (day < 0 || day >= context.days) return false;
+    const date = new Date(context.year, context.month - 1, day + 1);
+const dayOfWeek = date.getDay();
 
+// 夜②は水曜日のみ
+if (shift === "夜②" && dayOfWeek !== 3) return false;
+
+// 早②は木曜日のみ
+if (shift === "早②" && dayOfWeek !== 4) return false;
     const previousShift = getPreviousShift(state, day);
     const nextShift = state.shifts[day + 1] || "";
+    if (isWorkShift(shift) && hasShiftByOtherStaff(context, day, shift, state)) return false;
+
+if (previousShift === "遅" && isEarlyShift(shift)) return false;
+if (shift === "遅" && isEarlyShift(nextShift)) return false;
 
     if (previousShift === "夜②" && shift !== "休") return false;
     if (isNightShift(previousShift) && (isEarlyShift(shift) || shift === "遅")) return false;
@@ -2259,6 +2637,7 @@ function replaceAutoShift(state, day, shift) {
 
     if (state.fixed[day]) return false;
     if (!isAutoAssignedCell(state.cells[day])) return false;
+    if (isRequiredAutoCell(state.cells[day]) && state.shifts[day] !== shift) return false;
 
     const oldShift = state.shifts[day];
 
@@ -2285,6 +2664,7 @@ function replaceAutoShift(state, day, shift) {
     } else {
         delete cell.dataset.source;
         delete cell.dataset.autoAssigned;
+        delete cell.dataset.requiredShift;
         cell.classList.remove("autoAssignedCell");
     }
 
@@ -2313,7 +2693,19 @@ function chooseRestDay(context, state) {
     for (let day = 0; day < context.days; day++) {
 
         if (state.fixed[day] || state.shifts[day] !== "") continue;
+        const prev1 = state.shifts[day - 1] || "";
+const prev2 = state.shifts[day - 2] || "";
+const next1 = state.shifts[day + 1] || "";
+const next2 = state.shifts[day + 2] || "";
 
+// 自動作成では3連休を作らない
+if (
+    (isRestShift(prev2) && isRestShift(prev1)) ||
+    (isRestShift(prev1) && isRestShift(next1)) ||
+    (isRestShift(next1) && isRestShift(next2))
+) {
+    continue;
+}
         let score = 0;
         if (getConsecutiveWorkDays(state, day - 1) >= AUTO_SHIFT_CONFIG.maxConsecutiveWorkDays - 1) score += 30;
         if (state.shifts[day - 1] === "休" || state.shifts[day + 1] === "休") score += 18;
@@ -2388,6 +2780,7 @@ function scoreSetCandidate(context, state, day, shift) {
 
     let score = scoreCandidate(context, state, day, shift);
     score += getNightSetWeekendBalancePenalty(context, state, day, shift);
+    score += getPreviousBlankEarlyPenalty(state, day, shift);
 
     const workValues = context.staffStates.map(candidate => {
         return countWorkDays(candidate) + (candidate === state && isWorkShift(shift) ? 1 : 0);
@@ -2398,6 +2791,18 @@ function scoreSetCandidate(context, state, day, shift) {
     if (workRange >= 3) score += 80;
 
     return score;
+
+}
+
+function getPreviousBlankEarlyPenalty(state, day, shift) {
+
+    if (!isEarlyShift(shift)) return 0;
+    if (day <= 0) return 0;
+    if (state.shifts[day - 1] !== "") return 0;
+
+    // 早番を置くと、その本人の前日空白を遅番で埋めにくくなるため、
+    // 必須早番の担当者選択では前日空白のスタッフをできるだけ避ける。
+    return 120;
 
 }
 
@@ -2450,6 +2855,7 @@ function scoreAutoShiftPlan(context) {
         lateRange: ranges.late,
         weekendRange: ranges.weekendWork,
         missingDoubleRest: countMissingDoubleRest(context),
+        threeRestBlocks: countThreeConsecutiveRestBlocks(context),
         restPatternPenalty: getRestPatternPenalty(context),
         workStreakPenalty: getWorkStreakPatternPenalty(context),
         night1RunPenalty: getNight1RunPatternPenalty(context),
@@ -2742,6 +3148,8 @@ function countAbsoluteViolations(context) {
         if (hasPersonalNightConnectionViolation(state)) count += 5;
     });
 
+    count += countThreeConsecutiveRestBlocks(context) * 3;
+
     for (let day = 0; day < context.days - 1; day++) {
         const night1Staff = context.staffStates.find(state => state.shifts[day] === "夜①");
         if (night1Staff && !hasShiftByOtherStaff(context, day + 1, "早①", night1Staff)) count += 3;
@@ -2750,7 +3158,26 @@ function countAbsoluteViolations(context) {
         const night2Staff = context.staffStates.find(state => state.shifts[day] === "夜②");
         if (date.getDay() === 3 && night2Staff && !hasShiftByOtherStaff(context, day + 1, "早②", night2Staff)) count += 3;
     }
+    for (let day = 0; day < context.days; day++) {
+        const date = new Date(context.year, context.month - 1, day + 1);
+        if (date.getDay() === 3) {
+            const night2Staff = context.staffStates.find(state => state.shifts[day] === NIGHT2_SHIFT);
+            if (!night2Staff) {
+                count += 5;
+            } else if (day + 1 < context.days) {
+                if (night2Staff.shifts[day + 1] !== REST_SHIFT) count += 5;
+                if (!hasShiftByOtherStaff(context, day + 1, EARLY2_SHIFT, night2Staff)) count += 5;
+            }
+        }
+    }
+    for (let day = 0; day < context.days; day++) {
+    const workShifts = context.staffStates
+        .map(state => state.shifts[day])
+        .filter(shift => isWorkShift(shift));
 
+    const duplicateCount = workShifts.length - new Set(workShifts).size;
+    count += duplicateCount * 5;
+}
     count += countMonthBoundaryGlobalRuleViolations(context);
 
     return count;
@@ -2821,6 +3248,13 @@ function validateAutoShift(context) {
             markStaffCells(state);
         }
 
+        for (let day = 0; day < state.shifts.length - 2; day++) {
+            if (isRestShift(state.shifts[day]) && isRestShift(state.shifts[day + 1]) && isRestShift(state.shifts[day + 2])) {
+                warnings.push(`⚠ ${state.staff.name}さん：${day + 1}日〜${day + 3}日が3連休です`);
+                markCells(state, day, day + 2);
+            }
+        }
+
         const longWorkRanges = findLongWorkRanges(state);
         longWorkRanges.forEach(range => {
             warnings.push(`⚠ ${state.staff.name}さん：${range.start}日～${range.end}日が${range.length}連勤です`);
@@ -2837,7 +3271,10 @@ function validateAutoShift(context) {
             warnings.push(`⚠ ${state.staff.name}さん：前月末の夜②翌日の1日が休みではありません`);
             markCells(state, 0, 0);
         }
-
+        if (state.previousLastShift === "遅" && isEarlyShift(firstShift)) {
+    warnings.push(`⚠ ${state.staff.name}さん：前月末の遅番翌日に1日${getShiftDisplayName(firstShift)}が入っています`);
+    markCells(state, 0, 0);
+}
         for (let day = 0; day < context.days - 1; day++) {
             const shift = state.shifts[day];
             const nextShift = state.shifts[day + 1];
@@ -2846,7 +3283,10 @@ function validateAutoShift(context) {
                 warnings.push(`⚠ ${state.staff.name}さん：${day + 1}日の夜勤翌日に${day + 2}日${getShiftDisplayName(nextShift)}が入っています`);
                 markCells(state, day, day + 1);
             }
-
+            if (shift === "遅" && isEarlyShift(nextShift)) {
+    warnings.push(`⚠ ${state.staff.name}さん：${day + 1}日の遅番翌日に${day + 2}日${getShiftDisplayName(nextShift)}が入っています`);
+    markCells(state, day, day + 1);
+}
             if (shift === "夜②" && nextShift !== "休") {
                 warnings.push(`⚠ ${state.staff.name}さん：夜②翌日の${day + 2}日が休みではありません`);
                 markCells(state, day, day + 1);
@@ -2858,7 +3298,23 @@ function validateAutoShift(context) {
         }
 
     });
+    for (let day = 0; day < context.days; day++) {
+    ["早①", "早②", "遅", "夜①", "夜②"].forEach(shift => {
+        const duplicatedStaff = context.staffStates.filter(
+            state => state.shifts[day] === shift
+        );
 
+        if (duplicatedStaff.length > 1) {
+            warnings.push(
+                `⚠ ${day + 1}日：${getShiftDisplayName(shift)}が${duplicatedStaff.length}人重複しています`
+            );
+
+            duplicatedStaff.forEach(state => {
+                markCells(state, day, day);
+            });
+        }
+    });
+}
     const previousNight1Staff = context.staffStates.find(state => state.previousLastShift === "夜①");
     if (previousNight1Staff && !hasShiftByOtherStaff(context, 0, "早①", previousNight1Staff)) {
         warnings.push(`⚠ 前月末${getShiftDisplayName("夜①")}の翌日1日に、別社員の${getShiftDisplayName("早①")}がありません`);
@@ -2877,12 +3333,53 @@ function validateAutoShift(context) {
             warnings.push(`⚠ ${day + 1}日${getShiftDisplayName("夜①")}の翌日${day + 2}日に、別社員の${getShiftDisplayName("早①")}がありません`);
         }
 
+       const date = new Date(context.year, context.month - 1, day + 1);
+
+if (date.getDay() === 3) {
+
+    const night2Staff = context.staffStates.find(
+        state => state.shifts[day] === "夜②"
+    );
+
+    if (!night2Staff) {
+        warnings.push(`⚠ ${day + 1}日（水）：夜②がありません`);
+    } else {
+
+        const early2Staff = context.staffStates.find(
+            state => state.shifts[day + 1] === "早②"
+        );
+
+        if (!early2Staff) {
+            warnings.push(`⚠ ${day + 2}日（木）：早②がありません`);
+        } else if (early2Staff === night2Staff) {
+            warnings.push(`⚠ ${day + 1}日夜②と${day + 2}日早②が同じ社員です`);
+            markCells(night2Staff, day, day + 1);
+        }
+    }
+}
+
+    }
+
+    for (let day = 0; day < context.days; day++) {
         const date = new Date(context.year, context.month - 1, day + 1);
-        const night2Staff = context.staffStates.find(state => state.shifts[day] === "夜②");
-        if (date.getDay() === 3 && night2Staff && !hasShiftByOtherStaff(context, day + 1, "早②", night2Staff)) {
-            warnings.push(`⚠ 水曜${day + 1}日夜②の翌日${day + 2}日に、別社員の早②がありません`);
+        if (date.getDay() !== 3) continue;
+
+        const night2Staff = context.staffStates.find(state => state.shifts[day] === NIGHT2_SHIFT);
+        if (!night2Staff) {
+            warnings.push(`⚠ ${day + 1}日（水）：${getShiftDisplayName(NIGHT2_SHIFT)}がありません`);
+            continue;
         }
 
+        if (day + 1 >= context.days) continue;
+
+        if (night2Staff.shifts[day + 1] !== REST_SHIFT) {
+            warnings.push(`⚠ ${night2Staff.staff.name}さん：${day + 1}日${getShiftDisplayName(NIGHT2_SHIFT)}翌日の${day + 2}日が休みではありません`);
+            markCells(night2Staff, day, day + 1);
+        }
+
+        if (!hasShiftByOtherStaff(context, day + 1, EARLY2_SHIFT, night2Staff)) {
+            warnings.push(`⚠ ${day + 2}日（木）：${getShiftDisplayName(EARLY2_SHIFT)}がありません`);
+        }
     }
 
     addImbalanceWarnings(context, warnings);
@@ -2948,6 +3445,7 @@ function writeAutoShiftToTable(context) {
             } else {
                 delete cell.dataset.source;
                 delete cell.dataset.autoAssigned;
+                delete cell.dataset.requiredShift;
                 cell.classList.remove("autoAssignedCell");
             }
         });

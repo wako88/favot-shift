@@ -44,10 +44,10 @@ const resetMonthBtn = document.getElementById("resetMonthBtn");
 const shiftHead = document.getElementById("shiftHead");
 const shiftBody = document.getElementById("shiftBody");
 
-const today = new Date();
+const LAST_MONTH_KEY = "favotShiftVer1:lastSavedMonth";
 
 monthSelect.value =
-`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    localStorage.getItem(LAST_MONTH_KEY) || "2026-09";
 
 monthSelect.addEventListener("change", () => {
 

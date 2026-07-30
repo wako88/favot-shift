@@ -86,6 +86,7 @@ function saveData() {
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     localStorage.setItem(getMonthStorageKey(monthSelect.value), JSON.stringify(data));
+    localStorage.setItem("favotShiftVer1:lastSavedMonth", monthSelect.value);
 
 }
 
