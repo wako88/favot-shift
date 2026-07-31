@@ -347,6 +347,7 @@ function comparePlanScore(a, b) {
 
     if (a.violations !== b.violations) return a.violations - b.violations;
     if (a.blanks !== b.blanks) return a.blanks - b.blanks;
+    if (a.missingDoubleRest !== b.missingDoubleRest) return a.missingDoubleRest - b.missingDoubleRest;
     const aWorkOverflow = Math.max(0, a.workRange - 1);
     const bWorkOverflow = Math.max(0, b.workRange - 1);
     if (aWorkOverflow !== bWorkOverflow) return aWorkOverflow - bWorkOverflow;
@@ -361,7 +362,6 @@ function comparePlanScore(a, b) {
     const aEarly2Overflow = Math.max(0, a.early2Range - 1);
     const bEarly2Overflow = Math.max(0, b.early2Range - 1);
     if (aEarly2Overflow !== bEarly2Overflow) return aEarly2Overflow - bEarly2Overflow;
-    if (a.missingDoubleRest !== b.missingDoubleRest) return a.missingDoubleRest - b.missingDoubleRest;
     if (a.lateStandardPenalty !== b.lateStandardPenalty) return a.lateStandardPenalty - b.lateStandardPenalty;
     if (a.restPatternPenalty !== b.restPatternPenalty) return a.restPatternPenalty - b.restPatternPenalty;
     if (a.workStreakPenalty !== b.workStreakPenalty) return a.workStreakPenalty - b.workStreakPenalty;
@@ -2732,6 +2732,8 @@ function scoreCandidate(context, state, day, shift) {
     if (shift === "早②") score += state.counts.early2 * 9;
     if (shift === "遅") score += state.counts.late * 9;
     if (isWeekend(context, day)) score += state.counts.weekendWork * 8;
+    // 必須早番の配置段階で偏りが固定されないよう、候補時点の早番差を軽く評価する。
+    score += getProjectedEarlyBalancePenalty(context, state, shift) * 18;
 
     const consecutive = getConsecutiveWorkDaysIfAssigned(state, day, shift);
     score += consecutive * 4;
@@ -2759,6 +2761,26 @@ function getProjectedCategoryTargetPenalty(state, shift) {
     if (isRestShift(shift)) counts.rest++;
 
     return getCategoryTargetDistance(counts);
+
+}
+
+function getProjectedEarlyBalancePenalty(context, state, shift) {
+
+    if (!isEarlyShift(shift)) return 0;
+
+    const earlyValues = context.staffStates.map(candidate => {
+        return candidate.counts.early + (candidate === state ? 1 : 0);
+    });
+    const early1Values = context.staffStates.map(candidate => {
+        return candidate.counts.early1 + (candidate === state && shift === EARLY1_SHIFT ? 1 : 0);
+    });
+    const early2Values = context.staffStates.map(candidate => {
+        return candidate.counts.early2 + (candidate === state && shift === EARLY2_SHIFT ? 1 : 0);
+    });
+
+    return Math.max(0, getRange(earlyValues) - 1) * 3
+        + Math.max(0, getRange(early1Values) - 1) * 2
+        + Math.max(0, getRange(early2Values) - 1);
 
 }
 
@@ -3666,10 +3688,9 @@ function clearWarningCells() {
 function addImbalanceWarnings(context, warnings) {
 
     [
-        { key: "night", label: "夜勤回数" },
-        { key: "early1", label: `${getShiftDisplayName("早①")}回数` },
-        { key: "early2", label: "早②回数" },
-        { key: "late", label: "遅番回数" },
+        { key: "early", label: "早勤務回数" },
+        { key: "late", label: "遅勤務回数" },
+        { key: "night", label: "夜勤務回数" },
         { key: "weekendWork", label: "土日勤務回数" },
         { key: "work", label: "総勤務回数", value: countWorkDays }
     ].forEach(item => {
