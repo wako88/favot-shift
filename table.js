@@ -306,6 +306,7 @@ function buildAutoShiftPlan(context) {
     repairRequiredShiftPairs(context);
     repairBlankCellsWithRequiredProtection(context);
     repairRequiredShiftPairs(context);
+    repairRestDayBounds(context);
     
 
 }
@@ -347,6 +348,7 @@ function comparePlanScore(a, b) {
 
     if (a.violations !== b.violations) return a.violations - b.violations;
     if (a.blanks !== b.blanks) return a.blanks - b.blanks;
+    if (a.restTargetPenalty !== b.restTargetPenalty) return a.restTargetPenalty - b.restTargetPenalty;
     if (a.missingDoubleRest !== b.missingDoubleRest) return a.missingDoubleRest - b.missingDoubleRest;
     const aWorkOverflow = Math.max(0, a.workRange - 1);
     const bWorkOverflow = Math.max(0, b.workRange - 1);
@@ -466,8 +468,7 @@ function createAutoShiftContext(attempt = 0) {
                 previousConsecutiveWork: countTrailingWorkDays(previousShifts),
                 previousLastShift: previousShifts.length ? previousShifts[previousShifts.length - 1] : "",
                 previousRestCount,
-                // 8休以上あれば運用可能なため、9休に寄せる目的だけで休みを増やさない。
-                targetRestDays: AUTO_SHIFT_CONFIG.minRestDays,
+                targetRestDays: determineTargetRestDays(previousRestCount),
                 counts: getEmptyCounts()
             };
         })
@@ -1101,7 +1102,65 @@ function repairRestDayBounds(context) {
 
             replaceAutoShift(state, workDay, "休");
         }
+
+        reduceRestDaysTowardTarget(context, state);
     });
+
+}
+
+function reduceRestDaysTowardTarget(context, state) {
+
+    let guard = 0;
+
+    while (countRestDays(state) > state.targetRestDays && countRestDays(state) > AUTO_SHIFT_CONFIG.minRestDays && guard < context.days) {
+        guard++;
+
+        const restored = getRestDays(state).some(restDay => {
+            if (!canUseAutoRestForWorkRestore(state, restDay)) return false;
+
+            return getRestReplacementShifts(context, state, restDay).some(shift => {
+                return restoreAutoRestAsWorkIfBetter(context, state, restDay, shift);
+            });
+        });
+
+        if (!restored) break;
+    }
+
+}
+
+function canUseAutoRestForWorkRestore(state, day) {
+
+    if (state.fixed[day]) return false;
+    if (!isAutoAssignedCell(state.cells[day])) return false;
+    if (isRequiredAutoCell(state.cells[day])) return false;
+    return true;
+
+}
+
+function restoreAutoRestAsWorkIfBetter(context, state, day, shift) {
+
+    const before = scoreAutoShiftPlan(context);
+    const snapshot = captureContextSnapshot(context);
+
+    replaceAutoShift(state, day, "");
+    if (!canAssignShift(context, state, day, shift)) {
+        restoreContextSnapshot(context, snapshot);
+        return false;
+    }
+
+    assignShift(state, day, shift, true);
+
+    const after = scoreAutoShiftPlan(context);
+    if (after.violations === 0
+        && after.blanks === before.blanks
+        && after.restTargetPenalty < before.restTargetPenalty
+        && after.missingDoubleRest <= before.missingDoubleRest
+        && after.threeRestBlocks <= before.threeRestBlocks) {
+        return true;
+    }
+
+    restoreContextSnapshot(context, snapshot);
+    return false;
 
 }
 
@@ -1131,6 +1190,20 @@ function polishAutoShift(context) {
     improveFinalDoubleRest(context);
     improveNight1LongRuns(context);
     improveWeekendBalanceByPairedExchange(context);
+
+}
+
+function determineTargetRestDays(previousRestCount) {
+
+    if (previousRestCount === AUTO_SHIFT_CONFIG.minRestDays) {
+        return AUTO_SHIFT_CONFIG.maxRestDays;
+    }
+
+    if (previousRestCount === AUTO_SHIFT_CONFIG.maxRestDays) {
+        return AUTO_SHIFT_CONFIG.minRestDays;
+    }
+
+    return AUTO_SHIFT_CONFIG.minRestDays;
 
 }
 
@@ -2864,6 +2937,7 @@ function scoreAutoShiftPlan(context) {
     return {
         violations: countAbsoluteViolations(context),
         blanks: countBlankCells(context),
+        restTargetPenalty: getRestTargetPenalty(context),
         workRange: ranges.work,
         categoryTargetPenalty: category.targetPenalty,
         categoryRangePenalty: category.rangePenalty,
@@ -2883,6 +2957,14 @@ function scoreAutoShiftPlan(context) {
         night1RunPenalty: getNight1RunPatternPenalty(context),
         transitionPenalty: getTransitionPatternPenalty(context)
     };
+
+}
+
+function getRestTargetPenalty(context) {
+
+    return context.staffStates.reduce((total, state) => {
+        return total + Math.abs(countRestDays(state) - state.targetRestDays);
+    }, 0);
 
 }
 
